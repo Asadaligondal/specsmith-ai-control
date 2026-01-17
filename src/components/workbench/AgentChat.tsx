@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Bot, RefreshCcw } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -83,36 +83,43 @@ All functional requirements are now:
 export function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isProcessing, setIsProcessing] = useState(true);
+  const indexRef = useRef(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    // Simulate messages appearing one by one
-    let currentIndex = 0;
-    const interval = setInterval(() => {
-      if (currentIndex < mockConversation.length) {
-        setMessages((prev) => [...prev, mockConversation[currentIndex]]);
-        currentIndex++;
-      } else {
-        setIsProcessing(false);
-        clearInterval(interval);
-      }
-    }, 1500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleRestart = () => {
+  const startMessageSequence = useCallback(() => {
+    indexRef.current = 0;
     setMessages([]);
     setIsProcessing(true);
-    let currentIndex = 0;
-    const interval = setInterval(() => {
-      if (currentIndex < mockConversation.length) {
-        setMessages((prev) => [...prev, mockConversation[currentIndex]]);
-        currentIndex++;
+
+    intervalRef.current = setInterval(() => {
+      if (indexRef.current < mockConversation.length) {
+        const messageToAdd = mockConversation[indexRef.current];
+        setMessages((prev) => [...prev, messageToAdd]);
+        indexRef.current++;
       } else {
         setIsProcessing(false);
-        clearInterval(interval);
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
       }
     }, 1500);
+  }, []);
+
+  useEffect(() => {
+    startMessageSequence();
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [startMessageSequence]);
+
+  const handleRestart = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    startMessageSequence();
   };
 
   return (
