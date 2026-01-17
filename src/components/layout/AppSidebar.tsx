@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Columns3,
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Issue Board", url: "/issues", icon: Columns3 },
   { title: "Agent Workbench", url: "/workbench", icon: Bot },
   { title: "Settings", url: "/settings", icon: Settings },
@@ -27,6 +27,12 @@ const navItems = [
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Mock logout - redirect to landing page
+    navigate("/");
+  };
 
   return (
     <aside
@@ -89,6 +95,7 @@ export function AppSidebar() {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
+              onClick={handleLogout}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full transition-all duration-200",
                 "text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive"
