@@ -5,10 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Signup() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUp } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,17 +19,21 @@ export default function Signup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Mock signup - simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast({
-      title: "Account created!",
-      description: "Welcome to SpecSmith AI. Let's get started!",
-    });
-
-    navigate("/dashboard");
-    setIsLoading(false);
+    try {
+      await signUp(email, password, { fullName });
+      toast({
+        title: "Account created!",
+        description: "Welcome to SpecSmith AI. Let's get started!",
+      });
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast({
+        title: "Sign up failed",
+        description: err?.message ?? "Unable to create account",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGitLabSignup = () => {

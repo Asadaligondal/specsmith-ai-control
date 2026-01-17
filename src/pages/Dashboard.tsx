@@ -11,7 +11,7 @@ import { ProcessingChart } from "@/components/dashboard/ProcessingChart";
 const metrics = [
   {
     title: "Total Issues Imported",
-    value: 247,
+    value: 0,
     change: "+12 this week",
     changeType: "positive" as const,
     icon: FileText,
@@ -19,7 +19,7 @@ const metrics = [
   },
   {
     title: "Requirements Generated",
-    value: 892,
+    value: 0,
     change: "+48 this week",
     changeType: "positive" as const,
     icon: CheckCircle2,
@@ -27,7 +27,7 @@ const metrics = [
   },
   {
     title: "Pending Approval",
-    value: 23,
+    value: 0,
     change: "5 flagged for review",
     changeType: "neutral" as const,
     icon: Clock,
@@ -35,7 +35,7 @@ const metrics = [
   },
   {
     title: "Time Saved (Hours)",
-    value: "156",
+    value: "0",
     change: "+18% efficiency",
     changeType: "positive" as const,
     icon: Zap,

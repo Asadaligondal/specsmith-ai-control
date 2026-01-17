@@ -9,13 +9,13 @@ import {
 } from "recharts";
 
 const data = [
-  { date: "Mon", processed: 12, generated: 28 },
-  { date: "Tue", processed: 19, generated: 42 },
-  { date: "Wed", processed: 15, generated: 35 },
-  { date: "Thu", processed: 24, generated: 58 },
-  { date: "Fri", processed: 28, generated: 67 },
-  { date: "Sat", processed: 8, generated: 18 },
-  { date: "Sun", processed: 5, generated: 12 },
+  { date: "Mon", processed: 0, generated: 0 },
+  { date: "Tue", processed: 0, generated: 0 },
+  { date: "Wed", processed: 0, generated: 0 },
+  { date: "Thu", processed: 0, generated: 0 },
+  { date: "Fri", processed: 0, generated: 0 },
+  { date: "Sat", processed: 0, generated: 0 },
+  { date: "Sun", processed: 0, generated: 0 },
 ];
 
 export function ProcessingChart() {
