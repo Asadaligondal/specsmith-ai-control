@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Play,
@@ -7,6 +8,7 @@ import {
   Filter,
   ArrowUpDown,
 } from "lucide-react";
+import GitHubManager from "@/components/workbench/GitHubManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +28,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/AuthContext";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface Issue {
   id: string;
@@ -36,64 +41,7 @@ interface Issue {
   createdAt: string;
 }
 
-const mockIssues: Issue[] = [
-  {
-    id: "#102",
-    title: "Implement user authentication flow with OAuth2",
-    status: "new",
-    priority: "high",
-    author: "John Doe",
-    createdAt: "2 hours ago",
-  },
-  {
-    id: "#103",
-    title: "Add shopping cart persistence across sessions",
-    status: "processing",
-    priority: "medium",
-    author: "Jane Smith",
-    createdAt: "5 hours ago",
-  },
-  {
-    id: "#104",
-    title: "Implement real-time inventory updates",
-    status: "reviewing",
-    priority: "high",
-    author: "Alex Chen",
-    createdAt: "1 day ago",
-  },
-  {
-    id: "#105",
-    title: "Add product recommendation engine",
-    status: "completed",
-    priority: "medium",
-    author: "Sarah Wilson",
-    createdAt: "2 days ago",
-  },
-  {
-    id: "#106",
-    title: "Implement order tracking system",
-    status: "new",
-    priority: "critical",
-    author: "Mike Brown",
-    createdAt: "3 hours ago",
-  },
-  {
-    id: "#107",
-    title: "Add multi-currency support",
-    status: "processing",
-    priority: "low",
-    author: "Emily Davis",
-    createdAt: "4 days ago",
-  },
-  {
-    id: "#108",
-    title: "Implement customer review system",
-    status: "new",
-    priority: "medium",
-    author: "Chris Lee",
-    createdAt: "6 hours ago",
-  },
-];
+const mockIssues: Issue[] = []; // This line remains for reference, but will be replaced by importedIssues
 
 const statusConfig = {
   new: { label: "New", className: "bg-secondary text-secondary-foreground" },
@@ -113,8 +61,36 @@ export default function IssueBoard() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const { user } = useAuth();
+  const [importedIssues, setImportedIssues] = useState<Issue[]>([]);
 
-  const filteredIssues = mockIssues.filter((issue) => {
+  useEffect(() => {
+    if (!user) {
+      setImportedIssues([]);
+      return;
+    }
+
+    const col = collection(db, "users", user.uid, "importedIssues");
+    const q = query(col, orderBy("importedAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const items: Issue[] = snap.docs.map((d) => {
+        const data: any = d.data();
+        return {
+          id: `#${data.number}`,
+          title: data.title ?? "(no title)",
+          status: "new",
+          priority: "medium",
+          author: data.user ?? "",
+          createdAt: data.importedAt && data.importedAt.toDate ? data.importedAt.toDate().toLocaleString() : "",
+        };
+      });
+      setImportedIssues(items);
+    });
+
+    return () => unsub();
+  }, [user]);
+
+  const filteredIssues = importedIssues.filter((issue) => {
     const matchesSearch =
       issue.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       issue.id.includes(searchQuery);
@@ -123,7 +99,7 @@ export default function IssueBoard() {
   });
 
   const handleLaunchAgents = (issueId: string) => {
-    navigate(`/workbench?issue=${issueId}`);
+    navigate(`/workbench?issue=${encodeURIComponent(issueId)}`);
   };
 
   return (
@@ -136,11 +112,16 @@ export default function IssueBoard() {
             Manage and process GitLab issues with AI agents
           </p>
         </div>
-        <Button className="gradient-primary text-primary-foreground">
-          <ExternalLink className="w-4 h-4 mr-2" />
-          Sync from GitLab
-        </Button>
+          <div className="flex items-center gap-4">
+            <Button className="gradient-primary text-primary-foreground">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Sync from GitLab
+            </Button>
+          </div>
       </div>
+
+        {/* GitHub Integration */}
+        <GitHubManager />
 
       {/* Filters */}
       <div className="flex items-center gap-4">

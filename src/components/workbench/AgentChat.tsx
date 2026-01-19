@@ -1,8 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState } from "react";
 import { Bot, RefreshCcw } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useEffect } from "react";
 
 interface Message {
   id: string;
@@ -11,213 +16,332 @@ interface Message {
   timestamp: string;
 }
 
-const mockConversation: Message[] = [
-  {
-    id: "1",
-    agent: "builder",
-    content: `Based on Issue #102, I propose the following functional requirements:
-
-**FR-001: OAuth2 Authentication**
-- The system SHALL provide OAuth2 authentication via Google provider
-- The system SHALL provide OAuth2 authentication via GitHub provider
-- The system SHALL implement PKCE flow for enhanced security
-
-**FR-002: Session Management**
-- The system SHALL persist user sessions across browser tabs
-- The system SHALL store authentication tokens in httpOnly cookies
-- The system SHALL implement automatic token refresh`,
-    timestamp: "10:32 AM",
-  },
-  {
-    id: "2",
-    agent: "reviewer",
-    content: `I've reviewed the proposed requirements. A few observations:
-
-⚠️ **Ambiguity Detected in FR-001:**
-The requirement mentions "Google provider" and "GitHub provider" but doesn't specify what happens if these providers are unavailable. Consider adding fallback behavior.
-
-⚠️ **Missing Requirement:**
-The acceptance criteria mentions "Logout button should clear all session data" but I don't see a corresponding functional requirement for logout functionality.
-
-Please add:
-- FR-003: Logout Functionality`,
-    timestamp: "10:33 AM",
-  },
-  {
-    id: "3",
-    agent: "builder",
-    content: `Thank you for the review. I'll incorporate the feedback:
-
-**FR-001 (Updated):**
-- The system SHALL provide OAuth2 authentication via Google provider
-- The system SHALL provide OAuth2 authentication via GitHub provider
-- The system SHALL display an error message if the OAuth provider is unavailable
-- The system SHALL implement PKCE flow for enhanced security
-
-**FR-003: Logout Functionality** (NEW)
-- The system SHALL provide a logout button in the navigation
-- Upon logout, the system SHALL invalidate all session tokens
-- Upon logout, the system SHALL clear all client-side session data
-- Upon logout, the system SHALL redirect the user to the login page`,
-    timestamp: "10:35 AM",
-  },
-  {
-    id: "4",
-    agent: "reviewer",
-    content: `✅ **Review Complete**
-
-The updated requirements now properly address:
-- Provider availability handling
-- Complete logout functionality
-
-All functional requirements are now:
-- Specific and measurable
-- Testable
-- Traceable to the original acceptance criteria
-
-**Recommendation:** Ready for human approval.`,
-    timestamp: "10:36 AM",
-  },
-];
-
+import { useToast } from "@/hooks/use-toast";
+import { setDoc, serverTimestamp, collection, addDoc, getDocs, doc as docRef } from "firebase/firestore";
 export function AgentChat() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isProcessing, setIsProcessing] = useState(true);
-  const indexRef = useRef(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  const startMessageSequence = useCallback(() => {
-    indexRef.current = 0;
-    setMessages([]);
-    setIsProcessing(true);
-
-    intervalRef.current = setInterval(() => {
-      if (indexRef.current < mockConversation.length) {
-        const messageToAdd = mockConversation[indexRef.current];
-        setMessages((prev) => [...prev, messageToAdd]);
-        indexRef.current++;
-      } else {
-        setIsProcessing(false);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-    }, 1500);
-  }, []);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [searchParams] = useSearchParams();
+  const issueId = searchParams.get("issue") || "";
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    startMessageSequence();
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+    // Load issue summary to show in agent chat header or initial message
+    async function loadIssue() {
+      setMessages([]);
+      if (!user || !issueId) return;
+      const num = issueId.replace("#", "");
+      try {
+        const ref = doc(db, "users", user.uid, "importedIssues", String(num));
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data: any = snap.data();
+          // show a starter message referencing the issue title
+          setMessages([
+            {
+              id: "init-1",
+              agent: "builder",
+              content: `Ready to process issue #${data.number}: ${data.title}`,
+              timestamp: new Date().toLocaleTimeString(),
+            },
+          ]);
+        }
+      } catch (e) {
+        // ignore
       }
-    };
-  }, [startMessageSequence]);
-
-  const handleRestart = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
     }
-    startMessageSequence();
+    loadIssue();
+  }, [issueId, user]);
+
+  const runAgents = async () => {
+    const key = sessionStorage.getItem("OPENAI_API_KEY");
+    if (!key) {
+      toast({ title: "Missing API key", description: "Set your OpenAI key in the field above." });
+      return;
+    }
+    if (!user || !issueId) {
+      toast({ title: "No issue", description: "Open an issue before running agents." });
+      return;
+    }
+
+    const num = issueId.replace("#", "");
+    const ref = doc(db, "users", user.uid, "importedIssues", String(num));
+    try {
+      setIsProcessing(true);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) {
+        toast({ title: "Issue not found", description: "Import the issue first." });
+        setIsProcessing(false);
+        return;
+      }
+      const data: any = snap.data();
+
+      // enforce max rounds (completed runs) per issue
+      const runsCol = collection(db, "users", user.uid, "importedIssues", String(num), "agent_runs");
+      const existingRuns = await getDocs(runsCol);
+      const completedRuns = existingRuns.docs.filter((d) => (d.data() as any).status === "done").length;
+      if (completedRuns >= 5) {
+        toast({ title: "Run limit reached", description: "This issue has reached the maximum of 5 agent runs." });
+        setIsProcessing(false);
+        return;
+      }
+
+      // create a run document
+      const runDocRef = await addDoc(runsCol, {
+        status: "running",
+        startedAt: serverTimestamp(),
+        roundNumber: completedRuns + 1,
+      });
+      const runId = runDocRef.id;
+
+      // helper to persist messages
+      const msgsCol = collection(db, "users", user.uid, "importedIssues", String(num), "agent_runs", runId, "messages");
+
+      const builderSystem = "You are Builder Agent. Read the issue and produce a concise, developer-focused output (summary, tasks, labels). Respond in plain text.";
+      const reviewerSystem = "You are Reviewer Agent. Given the issue and Builder Agent output, improve, critique, and produce a final actionable spec and PR draft in plain text.";
+
+      // Builder agent prompt
+      const builderPrompt = `Issue Title:\n${data.title}\n\nDescription:\n${data.body ?? ""}`;
+      await addDoc(msgsCol, { agent: "orchestrator", role: "system", content: builderSystem, type: "prompt", timestamp: serverTimestamp() });
+      await addDoc(msgsCol, { agent: "BuilderAgent", role: "user", content: builderPrompt, type: "prompt", timestamp: serverTimestamp() });
+
+      // Call OpenAI for Builder
+      const builderRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: builderSystem },
+            { role: "user", content: builderPrompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 800,
+        }),
+      });
+
+      if (!builderRes.ok) {
+        const errText = await builderRes.text();
+        await setDoc(runDocRef, { status: "error", error: errText, endedAt: serverTimestamp() }, { merge: true });
+        toast({ title: "OpenAI error (Builder)", description: errText });
+        setIsProcessing(false);
+        return;
+      }
+
+      const builderBody = await builderRes.json();
+      const builderContent = builderBody?.choices?.[0]?.message?.content ?? "";
+      await addDoc(msgsCol, { agent: "BuilderAgent", role: "assistant", content: builderContent, type: "response", timestamp: serverTimestamp() });
+
+      // append builder message to UI
+      setMessages((prev) => [
+        ...prev,
+        { id: `builder-${Date.now()}`, agent: "builder", content: builderContent, timestamp: new Date().toLocaleTimeString() },
+      ]);
+
+      // Reviewer agent prompt includes builder output
+      const reviewerPrompt = `Original Issue:\n${data.title}\n${data.body ?? ""}\n\nBuilder Output:\n${builderContent}\n\nPlease provide a final actionable spec and draft PR body.`;
+      await addDoc(msgsCol, { agent: "orchestrator", role: "system", content: reviewerSystem, type: "prompt", timestamp: serverTimestamp() });
+      await addDoc(msgsCol, { agent: "ReviewerAgent", role: "user", content: reviewerPrompt, type: "prompt", timestamp: serverTimestamp() });
+
+      // Call OpenAI for Reviewer
+      const reviewerRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: reviewerSystem },
+            { role: "user", content: reviewerPrompt },
+          ],
+          temperature: 0.2,
+          max_tokens: 1200,
+        }),
+      });
+
+      if (!reviewerRes.ok) {
+        const errText = await reviewerRes.text();
+        await setDoc(runDocRef, { status: "error", error: errText, endedAt: serverTimestamp() }, { merge: true });
+        toast({ title: "OpenAI error (Reviewer)", description: errText });
+        setIsProcessing(false);
+        return;
+      }
+
+      const reviewerBody = await reviewerRes.json();
+      const reviewerContent = reviewerBody?.choices?.[0]?.message?.content ?? "";
+      await addDoc(msgsCol, { agent: "ReviewerAgent", role: "assistant", content: reviewerContent, type: "response", timestamp: serverTimestamp() });
+
+      // append reviewer message to UI
+      setMessages((prev) => [
+        ...prev,
+        { id: `reviewer-${Date.now()}`, agent: "reviewer", content: reviewerContent, timestamp: new Date().toLocaleTimeString() },
+      ]);
+
+      // finalize run doc and write outputs to issue
+      await setDoc(runDocRef, { status: "done", endedAt: serverTimestamp(), builderOutput: builderContent, reviewerOutput: reviewerContent }, { merge: true });
+
+      await setDoc(ref, {
+        generatedOutput: { builder: builderContent, reviewer: reviewerContent, runId },
+        generatedAt: serverTimestamp(),
+        requirementsGenerated: true,
+        latestRunId: runId,
+        requirementsEntry: { runId, generatedAt: serverTimestamp(), title: data.title ?? "Requirements" },
+      }, { merge: true });
+
+      toast({ title: "Agents finished", description: "Generated output saved to Firestore." });
+    } catch (err: any) {
+      toast({ title: "Run failed", description: err?.message ?? String(err) });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const startRun = async () => {
+    const allow = import.meta.env.VITE_ENABLE_AGENT_RUNS === "true";
+    if (!allow) {
+      alert("Agent run is disabled in this environment. Provide permission to enable runs.");
+      return;
+    }
+    await runAgents();
+  };
+  const handleRestart = () => {
+    // Clear messages and show idle state — actual agent runs require API keys
+    setMessages([]);
+    setIsProcessing(false);
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-sm">Agent Loop</h3>
-          {isProcessing && (
-            <span className="flex items-center gap-1.5 text-xs text-primary">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-soft" />
-              Processing...
-            </span>
-          )}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm">Agent Loop</h3>
+            {isProcessing && (
+              <span className="flex items-center gap-1.5 text-xs text-primary">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-soft" />
+                Processing...
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              aria-label="OpenAI API Key"
+              placeholder="OpenAI API key (optional)"
+              type="password"
+              value={sessionStorage.getItem("OPENAI_API_KEY") ?? ""}
+              onChange={(e) => {
+                sessionStorage.setItem("OPENAI_API_KEY", e.target.value);
+              }}
+              className="input input-sm px-2 py-1 rounded-md border bg-card text-sm"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                // noop: storing in sessionStorage is sufficient for now
+                const val = sessionStorage.getItem("OPENAI_API_KEY");
+                if (val) {
+                  // eslint-disable-next-line no-console
+                  console.log("OpenAI key set in sessionStorage");
+                  alert("OpenAI key set for this session.");
+                } else {
+                  alert("No key provided.");
+                }
+              }}
+              className="h-7 text-xs"
+            >
+              Save Key
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRestart}
-          className="h-7 text-xs gap-1.5"
-        >
-          <RefreshCcw className="w-3 h-3" />
-          Restart
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRestart}
+            className="h-7 text-xs gap-1.5"
+          >
+            <RefreshCcw className="w-3 h-3" />
+            Clear
+          </Button>
+          <Button size="sm" onClick={startRun} className="h-7 text-xs">
+            Run Agents
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex gap-3 animate-slide-up",
-              message.agent === "reviewer" && "flex-row-reverse"
-            )}
-          >
-            <Avatar
+        {messages.length === 0 ? (
+          <div className="text-sm text-muted-foreground">No agent activity. Click Run to start processing (requires API keys).</div>
+        ) : (
+          messages.map((message) => (
+            <div
+              key={message.id}
               className={cn(
-                "w-8 h-8 shrink-0",
-                message.agent === "builder"
-                  ? "bg-agent-builder/10"
-                  : "bg-agent-reviewer/10"
+                "flex gap-3 animate-slide-up",
+                message.agent === "reviewer" && "flex-row-reverse"
               )}
             >
-              <AvatarFallback
+              <Avatar
                 className={cn(
+                  "w-8 h-8 shrink-0",
                   message.agent === "builder"
-                    ? "bg-agent-builder text-primary-foreground"
-                    : "bg-agent-reviewer text-primary-foreground"
+                    ? "bg-agent-builder/10"
+                    : "bg-agent-reviewer/10"
                 )}
               >
-                <Bot className="w-4 h-4" />
-              </AvatarFallback>
-            </Avatar>
-
-            <div
-              className={cn(
-                "flex-1 space-y-1",
-                message.agent === "reviewer" && "text-right"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <span
+                <AvatarFallback
                   className={cn(
-                    "text-xs font-medium",
                     message.agent === "builder"
-                      ? "text-agent-builder"
-                      : "text-agent-reviewer"
+                      ? "bg-agent-builder text-primary-foreground"
+                      : "bg-agent-reviewer text-primary-foreground"
                   )}
                 >
-                  {message.agent === "builder" ? "Builder Agent" : "Reviewer Agent"}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {message.timestamp}
-                </span>
-              </div>
+                  <Bot className="w-4 h-4" />
+                </AvatarFallback>
+              </Avatar>
 
               <div
                 className={cn(
-                  "p-3 rounded-lg text-sm whitespace-pre-wrap text-left",
-                  message.agent === "builder"
-                    ? "bg-agent-builder/5 border border-agent-builder/20"
-                    : "bg-agent-reviewer/5 border border-agent-reviewer/20"
+                  "flex-1 space-y-1",
+                  message.agent === "reviewer" && "text-right"
                 )}
               >
-                {message.content}
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "text-xs font-medium",
+                      message.agent === "builder"
+                        ? "text-agent-builder"
+                        : "text-agent-reviewer"
+                    )}
+                  >
+                    {message.agent === "builder" ? "Builder Agent" : "Reviewer Agent"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {message.timestamp}
+                  </span>
+                </div>
+
+                <div
+                  className={cn(
+                    "p-3 rounded-lg text-sm whitespace-pre-wrap text-left",
+                    message.agent === "builder"
+                      ? "bg-agent-builder/5 border border-agent-builder/20"
+                      : "bg-agent-reviewer/5 border border-agent-reviewer/20"
+                  )}
+                >
+                  {message.content}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-
-        {isProcessing && messages.length > 0 && (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <div className="flex gap-1">
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-              <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
-            </div>
-            <span className="text-xs">Agent is thinking...</span>
-          </div>
+          ))
         )}
       </div>
     </div>
