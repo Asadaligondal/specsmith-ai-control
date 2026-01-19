@@ -121,13 +121,12 @@ export default function IssueBoard() {
         <div>
           <h1 className="text-2xl font-bold">Issue Board</h1>
           <p className="text-muted-foreground">
-            Manage and process GitLab issues with AI agents
+            Manage and process issues with AI agents
           </p>
         </div>
           <div className="flex items-center gap-4">
-            <Button className="gradient-primary text-primary-foreground">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Sync from GitLab
+            <Button className="gradient-primary text-primary-foreground" asChild>
+              <a href="/settings"><ExternalLink className="w-4 h-4 mr-2" />Connect Repository</a>
             </Button>
           </div>
       </div>

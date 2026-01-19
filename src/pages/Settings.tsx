@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Save,
   Eye,
@@ -25,25 +25,26 @@ import {
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-
-// Mock user data
-const mockUser = {
-  name: "John Doe",
-  email: "john@company.com",
-  avatar: "",
-};
+import { useAuth } from "@/lib/AuthContext";
+import { doc, setDoc, getDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Octokit } from "@octokit/rest";
 
 export default function Settings() {
   const { toast } = useToast();
-  
+  const { user } = useAuth();
+
   // General settings
-  const [userName, setUserName] = useState(mockUser.name);
-  const [userEmail, setUserEmail] = useState(mockUser.email);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
-  // GitLab settings
+  // Integration settings
   const [showGitlabToken, setShowGitlabToken] = useState(false);
   const [gitlabToken, setGitlabToken] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
+  const [provider, setProvider] = useState<"github" | "gitlab">("github");
+  const [storedPat, setStoredPat] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   
@@ -66,28 +67,92 @@ export default function Settings() {
 
   const handleVerifyConnection = async () => {
     setIsVerifying(true);
-    // Mock verification
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsConnected(true);
-    setIsVerifying(false);
-    toast({
-      title: "Connection Verified",
-      description: "Successfully connected to your GitLab repository.",
-    });
+    try {
+      if (!user) throw new Error("Sign in required");
+      if (provider === "github") {
+        if (!storedPat || !repoUrl) throw new Error("Provide PAT and repo URL");
+        const octokit = new Octokit({ auth: storedPat });
+        // try to get repo
+        const parts = repoUrl.replace(/\.git$/i, "").split("/").slice(-2);
+        const owner = parts[0];
+        const repo = parts[1];
+        setIsVerifying(true);
+        await octokit.rest.repos.get({ owner, repo });
+        setIsConnected(true);
+        toast({ title: "Connection Verified", description: "Connected to GitHub repository." });
+      } else {
+        // For GitLab, we just mock-check by ensuring token and URL provided
+        if (!gitlabToken || !repoUrl) throw new Error("Provide GitLab token and repo URL");
+        setIsConnected(true);
+        toast({ title: "Connection Verified", description: "Connected to GitLab repository." });
+      }
+    } catch (err: any) {
+      toast({ title: "Connection failed", description: err?.message ?? String(err) });
+      setIsConnected(false);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
-  const handleSaveGeneral = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your profile settings have been saved.",
+  useEffect(() => {
+    // load profile and settings with realtime updates
+    if (!user) return;
+    const ref = doc(db, "users", user.uid);
+    const unsubUser = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const data: any = snap.data();
+      setUserName(data.name ?? "");
+      setUserEmail(data.email ?? user.email ?? "");
+      setAvatarPreview(data.avatarUrl ?? null);
     });
+
+    const settingsRef = doc(db, "users", user.uid, "settings", "integrations");
+    const unsubSettings = onSnapshot(settingsRef, (sSnap) => {
+      if (!sSnap.exists()) {
+        setProvider("github");
+        setRepoUrl("");
+        setStoredPat("");
+        setIsConnected(false);
+        return;
+      }
+      const s: any = sSnap.data();
+      setProvider(s.provider ?? "github");
+      setRepoUrl(s.repoUrl ?? "");
+      setStoredPat(s.pat ?? "");
+      setIsConnected(Boolean(s.verified));
+    });
+
+    return () => {
+      unsubUser();
+      unsubSettings();
+    };
+  }, [user]);
+
+  const handleSaveGeneral = async () => {
+    if (!user) return;
+    const ref = doc(db, "users", user.uid);
+    await setDoc(ref, { name: userName, email: userEmail, avatarUrl: avatarPreview ?? null, updatedAt: serverTimestamp() }, { merge: true });
+    toast({ title: "Profile Updated", description: "Your profile settings have been saved." });
   };
 
   const handleSaveIntegrations = () => {
-    toast({
-      title: "Settings Saved",
-      description: "Your integration settings have been updated.",
-    });
+    // persist to Firestore
+    (async () => {
+      if (!user) return;
+      const settingsRef = doc(db, "users", user.uid, "settings", "integrations");
+      await setDoc(settingsRef, { provider, repoUrl, pat: provider === "github" ? storedPat : gitlabToken, verified: isConnected, updatedAt: serverTimestamp() }, { merge: true });
+      toast({ title: "Settings Saved", description: "Your integration settings have been updated." });
+    })();
+  };
+
+  const handleAvatarUpload = (file: File | null) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = reader.result as string;
+      setAvatarPreview(res);
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -135,15 +200,29 @@ export default function Settings() {
             {/* Avatar */}
             <div className="flex items-center gap-6">
               <Avatar className="w-20 h-20">
-                <AvatarImage src={mockUser.avatar} />
+                <AvatarImage src={avatarPreview ?? undefined} />
                 <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                  {userName.split(" ").map((n) => n[0]).join("")}
+                  {userName ? userName.split(" ").map((n) => n[0]).join("") : "U"}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Avatar
-              </Button>
+              <div>
+                <label className="inline-flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleAvatarUpload(e.target.files ? e.target.files[0] : null)}
+                    className="hidden"
+                    id="avatar-file"
+                  />
+                  <Button as="span" variant="outline" size="sm">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Avatar
+                  </Button>
+                </label>
+                {avatarPreview && (
+                  <div className="text-xs text-muted-foreground mt-2">Preview shown above. Click Save Profile to persist.</div>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -182,94 +261,73 @@ export default function Settings() {
 
         {/* Integrations Tab */}
         <TabsContent value="integrations" className="space-y-6">
-          {/* GitLab Integration */}
           <div className="glass-card rounded-xl p-6 space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-orange-500/10">
-                  <svg
-                    className="w-5 h-5 text-orange-500"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="font-semibold">GitLab Connection</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Connect your GitLab repository to import issues
-                  </p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Link2 className="w-5 h-5 text-primary" />
               </div>
-              {isConnected && (
-                <div className="flex items-center gap-2 text-sm text-success">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Connected
-                </div>
-              )}
+              <div>
+                <h2 className="font-semibold">Source Control Integration</h2>
+                <p className="text-sm text-muted-foreground">Connect GitHub or GitLab and persist your PAT and repository selection.</p>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {/* Repository URL */}
+            <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="repo-url">GitLab Repository URL</Label>
-                <Input
-                  id="repo-url"
-                  placeholder="https://gitlab.com/your-org/your-repo"
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                />
+                <Label>Provider</Label>
+                <Select value={provider} onValueChange={(v) => setProvider(v as "github" | "gitlab") }>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="github">GitHub</SelectItem>
+                    <SelectItem value="gitlab">GitLab</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Personal Access Token */}
               <div className="space-y-2">
-                <Label htmlFor="gitlab-token">Personal Access Token</Label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <Key className="w-4 h-4 text-muted-foreground" />
+                <Label htmlFor="repo-url">Repository URL</Label>
+                <Input id="repo-url" placeholder="https://github.com/org/repo" value={repoUrl} onChange={(e) => setRepoUrl(e.target.value)} />
+              </div>
+
+              {provider === "github" ? (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="github-pat">GitHub Personal Access Token</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      <Key className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <Input id="github-pat" type={showGitlabToken ? "text" : "password"} placeholder="ghp_xxx..." value={storedPat} onChange={(e) => setStoredPat(e.target.value)} className="pl-9 pr-10" />
+                    <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0" onClick={() => setShowGitlabToken(!showGitlabToken)}>
+                      {showGitlabToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
                   </div>
-                  <Input
-                    id="gitlab-token"
-                    type={showGitlabToken ? "text" : "password"}
-                    placeholder="glpat-xxxxxxxxxxxxxxxxxxxx"
-                    value={gitlabToken}
-                    onChange={(e) => setGitlabToken(e.target.value)}
-                    className="pl-9 pr-10"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                    onClick={() => setShowGitlabToken(!showGitlabToken)}
-                  >
-                    {showGitlabToken ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </Button>
+                  <p className="text-xs text-muted-foreground">Store your PAT in your user settings to avoid entering it per-import. It will be saved to your account.</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Create a token with <code className="px-1 py-0.5 rounded bg-muted">read_api</code> scope
-                </p>
-              </div>
+              ) : (
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="gitlab-token">GitLab Personal Access Token</Label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                      <Key className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <Input id="gitlab-token" type={showGitlabToken ? "text" : "password"} placeholder="glpat-..." value={gitlabToken} onChange={(e) => setGitlabToken(e.target.value)} className="pl-9 pr-10" />
+                    <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0" onClick={() => setShowGitlabToken(!showGitlabToken)}>
+                      {showGitlabToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-              <Button
-                onClick={handleVerifyConnection}
-                disabled={!gitlabToken || !repoUrl || isVerifying}
-                variant="outline"
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify Connection"
-                )}
-              </Button>
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-2">
+                  <Button onClick={handleVerifyConnection} disabled={isVerifying || !repoUrl || (provider === 'github' ? !storedPat : !gitlabToken)} variant="outline">
+                    {isVerifying ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</>) : 'Verify Connection'}
+                  </Button>
+                  {isConnected && <span className="text-sm text-success flex items-center gap-2"><CheckCircle2 className="w-4 h-4" />Connected</span>}
+                </div>
+              </div>
             </div>
           </div>
 

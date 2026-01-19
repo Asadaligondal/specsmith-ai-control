@@ -10,6 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/lib/AuthContext";
+import { doc, getDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { db } from "@/lib/firebase";
 
 interface AppHeaderProps {
   isDark: boolean;
@@ -17,16 +21,47 @@ interface AppHeaderProps {
 }
 
 export function AppHeader({ isDark, toggleTheme }: AppHeaderProps) {
+  const { user, signOut } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [repoName, setRepoName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      setRepoName(null);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) setProfile(snap.data());
+
+        const settingsRef = doc(db, "users", user.uid, "settings", "integrations");
+        const sSnap = await getDoc(settingsRef);
+        if (sSnap.exists()) {
+          const s: any = sSnap.data();
+          if (s.repoUrl) {
+            const parts = s.repoUrl.replace(/\.git$/i, "").split("/");
+            setRepoName(parts.slice(-2).join("/"));
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    load();
+  }, [user]);
+
   return (
     <header className="flex items-center justify-between h-16 px-6 border-b border-border bg-card">
       {/* Active Project */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
           <GitBranch className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">E-Commerce V1</span>
-          <Badge variant="secondary" className="text-xs bg-success/10 text-success border-0">
-            Active
-          </Badge>
+          <span className="text-sm font-medium">{repoName ?? "E-Commerce V1"}</span>
+          <Badge variant="secondary" className="text-xs bg-success/10 text-success border-0">Active</Badge>
         </div>
       </div>
 
@@ -48,10 +83,10 @@ export function AppHeader({ isDark, toggleTheme }: AppHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 pl-2 pr-3">
               <Avatar className="w-8 h-8">
-                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=sarah" />
-                <AvatarFallback>SC</AvatarFallback>
+                <AvatarImage src={profile?.avatarUrl ?? `https://api.dicebear.com/7.x/avataaars/svg?seed=${(profile?.name ?? user?.email ?? 'user')}`} />
+                <AvatarFallback>{((profile?.name ?? user?.email ?? "").split(" ").map((n:any)=>n[0]).slice(0,2).join(""))}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">Sarah Chen</span>
+              <span className="text-sm font-medium">{profile?.name ?? user?.email ?? "User"}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
@@ -60,7 +95,7 @@ export function AppHeader({ isDark, toggleTheme }: AppHeaderProps) {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onSelect={() => signOut && signOut()}>
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>

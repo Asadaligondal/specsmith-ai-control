@@ -12,8 +12,9 @@ import {
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/AuthContext";
-import { setDoc, doc, serverTimestamp, collection, onSnapshot } from "firebase/firestore";
+import { setDoc, doc, serverTimestamp, collection, onSnapshot, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useNavigate } from "react-router-dom";
 import { ExternalLink, PlusSquare } from "lucide-react";
 import {
   AlertDialog,
@@ -41,7 +42,6 @@ interface IssueItem {
 
 export function GitHubManager() {
   const { toast } = useToast();
-  const [token, setToken] = useState("");
   const [octokit, setOctokit] = useState<Octokit | null>(null);
   const [repos, setRepos] = useState<RepoItem[]>([]);
   const [selectedRepo, setSelectedRepo] = useState<string>("");
@@ -50,35 +50,59 @@ export function GitHubManager() {
   const [loadingIssues, setLoadingIssues] = useState(false);
   const [importing, setImporting] = useState<number | null>(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [importedNumbers, setImportedNumbers] = useState<Set<number>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmIssue, setConfirmIssue] = useState<IssueItem | null>(null);
+  const [storedPat, setStoredPat] = useState<string>("");
+  const [settingsProvider, setSettingsProvider] = useState<string>("");
+  const [settingsRepoUrl, setSettingsRepoUrl] = useState<string>("");
 
-  const connect = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!token) {
-      toast({ title: "Token required", description: "Please enter a GitHub token." });
-      return;
-    }
-
-    try {
-      setLoadingRepos(true);
-      const client = new Octokit({ auth: token });
-      setOctokit(client);
-
-      // list repos for authenticated user
-      const res = await client.rest.repos.listForAuthenticatedUser({ per_page: 100 });
-      const items = res.data.map((r: any) => ({ id: r.id, full_name: r.full_name, name: r.name, owner: { login: r.owner.login } }));
-      setRepos(items);
-      if (items.length === 0) {
-        toast({ title: "No repositories", description: "No repositories found for this account." });
+  // load saved integration settings from Firestore and instantiate Octokit if available
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (!user) return;
+      try {
+        const settingsRef = doc(db, "users", user.uid, "settings", "integrations");
+        const snap = await getDoc(settingsRef);
+        if (!snap.exists()) return;
+        const data: any = snap.data();
+        setSettingsProvider(data.provider ?? "");
+        setSettingsRepoUrl(data.repoUrl ?? "");
+        setStoredPat(data.pat ?? "");
+        if (data.provider === "github" && data.pat && data.repoUrl) {
+          const client = new Octokit({ auth: data.pat });
+          setOctokit(client);
+          // use repoUrl as selected repo (owner/repo)
+          const parts = data.repoUrl.replace(/\.git$/i, "").split("/").slice(-2);
+          const full = parts.join("/");
+          setSelectedRepo(full);
+          // fetch issues for repo
+          fetchIssues(full, client);
+        }
+      } catch (err: any) {
+        console.error("Failed to load integration settings", err);
       }
-    } catch (err: any) {
-      toast({ title: "Bad Credentials", description: err?.message ?? "Unable to authenticate with GitHub." });
-      setOctokit(null);
-      setRepos([]);
-    } finally {
-      setLoadingRepos(false);
+    };
+    loadSettings();
+  }, [user]);
+
+  const parseRepo = (repoUrl: string) => {
+    if (!repoUrl) return "";
+    // handle full urls like https://github.com/org/repo or git@github.com:org/repo.git
+    try {
+      if (repoUrl.includes("github.com") && repoUrl.includes("/")) {
+        const parts = repoUrl.replace(/\.git$/i, "").split("/").slice(-2);
+        return parts.join("/");
+      }
+      if (repoUrl.includes(":")) {
+        const after = repoUrl.split(":").pop() || repoUrl;
+        const parts = after.replace(/\.git$/i, "").split("/").slice(-2);
+        return parts.join("/");
+      }
+      return repoUrl;
+    } catch (e) {
+      return repoUrl;
     }
   };
 
@@ -129,9 +153,10 @@ export function GitHubManager() {
     return () => unsub();
   }, [user]);
 
-  const fetchIssues = async (repoFullName: string) => {
-    if (!octokit) {
-      toast({ title: "Not connected", description: "Please connect a GitHub token first." });
+  const fetchIssues = async (repoFullName: string, client?: Octokit | null) => {
+    const useClient = client ?? octokit;
+    if (!useClient) {
+      toast({ title: "Not connected", description: "Please connect a GitHub token in Settings." });
       return;
     }
     const [owner, repo] = repoFullName.split("/");
@@ -139,7 +164,7 @@ export function GitHubManager() {
 
     try {
       setLoadingIssues(true);
-      const res = await octokit.rest.issues.listForRepo({ owner, repo, state: "open", per_page: 100 });
+      const res = await useClient.rest.issues.listForRepo({ owner, repo, state: "open", per_page: 100 });
       const mapped = res.data.map((i: any) => ({
         number: i.number,
         title: i.title,
@@ -157,43 +182,33 @@ export function GitHubManager() {
 
   return (
     <div className="glass-card rounded-xl p-4 space-y-4">
-      <h3 className="text-lg font-semibold">GitHub Integration</h3>
+      <h3 className="text-lg font-semibold">Connected Repository</h3>
 
-      <form onSubmit={connect} className="flex gap-2 items-center">
-        <Input
-          placeholder="GitHub Personal Access Token"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          className="flex-1"
-        />
-        <Button type="submit" className="ml-2" disabled={loadingRepos}>
-          {loadingRepos ? "Connecting..." : "Connect"}
-        </Button>
-      </form>
-
-      {repos.length > 0 && (
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Select a repository</p>
-          <Select value={selectedRepo} onValueChange={(v) => { setSelectedRepo(v); fetchIssues(v); }}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose repository" />
-            </SelectTrigger>
-            <SelectContent>
-              {repos.map((r) => (
-                <SelectItem key={r.id} value={r.full_name}>{r.full_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {settingsProvider !== "github" && (
+        <div className="text-sm text-muted-foreground">No GitHub repository connected. Connect one in <a href="/settings" className="underline">Settings</a>.</div>
       )}
 
-      {selectedRepo && (
-        <div>
-          <p className="text-sm text-muted-foreground mb-2">Open issues for {selectedRepo}</p>
+      {settingsProvider === "github" && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Repository</p>
+              <p className="font-medium">{settingsRepoUrl || "(not configured)"}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => {
+                const repo = selectedRepo || parseRepo(settingsRepoUrl || "");
+                if (repo) fetchIssues(repo);
+                else navigate('/settings');
+              }}>Refresh Issues</Button>
+              {!storedPat && <Button size="sm" variant="ghost" onClick={() => navigate('/settings')}>Connect</Button>}
+            </div>
+          </div>
+
           {loadingIssues ? (
             <p>Loading issues...</p>
           ) : issues.length === 0 ? (
-            <p className="text-sm">No open issues found.</p>
+            <p className="text-sm">No open issues found for the connected repository.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {issues.map((issue) => (
