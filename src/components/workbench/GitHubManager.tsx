@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Octokit } from "@octokit/rest";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -132,7 +133,7 @@ export function GitHubManager() {
   };
 
   useEffect(() => {
-    // clear issues when repo changes
+    // clear issues when repo changesasdasdads
     setIssues([]);
   }, [selectedRepo]);
 
