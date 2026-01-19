@@ -75,11 +75,23 @@ export default function IssueBoard() {
     const unsub = onSnapshot(q, (snap) => {
       const items: Issue[] = snap.docs.map((d) => {
         const data: any = d.data();
+        // derive status from persisted fields
+        let status: Issue['status'] = 'new';
+        if (data.requirementsApproved) status = 'completed';
+        else if (data.requirementsGenerated) status = 'reviewing';
+        else if (data.latestRunId) status = 'processing';
+
+        // derive priority mapping if available
+        let priority: Issue['priority'] = 'medium';
+        if (data.priority === 'low' || data.priority === 'medium' || data.priority === 'high' || data.priority === 'critical') {
+          priority = data.priority;
+        }
+
         return {
           id: `#${data.number}`,
           title: data.title ?? "(no title)",
-          status: "new",
-          priority: "medium",
+          status,
+          priority,
           author: data.user ?? "",
           createdAt: data.importedAt && data.importedAt.toDate ? data.importedAt.toDate().toLocaleString() : "",
         };
@@ -203,14 +215,20 @@ export default function IssueBoard() {
                   {issue.createdAt}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    onClick={() => handleLaunchAgents(issue.id)}
-                    className="gradient-primary text-primary-foreground"
-                  >
-                    <Play className="w-3 h-3 mr-1.5" />
-                    Launch Agents
-                  </Button>
+                  {(() => {
+                    const isCompleted = issue.status === "completed";
+                    const label = isCompleted ? "View on Workbench" : "Launch Agents";
+                    return (
+                      <Button
+                        size="sm"
+                        onClick={() => handleLaunchAgents(issue.id)}
+                        className={"gradient-primary text-primary-foreground"}
+                      >
+                        <Play className="w-3 h-3 mr-1.5" />
+                        {label}
+                      </Button>
+                    );
+                  })()}
                 </TableCell>
               </TableRow>
             ))}

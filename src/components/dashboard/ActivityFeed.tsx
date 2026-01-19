@@ -1,62 +1,70 @@
 import { Bot, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface Activity {
   id: string;
   type: "builder" | "reviewer" | "system";
   message: string;
-  time: string;
+  time: string; // human readable
   status?: "success" | "warning" | "info";
 }
 
-const activities: Activity[] = [
-  {
-    id: "1",
-    type: "builder",
-    message: "Builder Agent analyzed Issue #402 and generated 5 requirements",
-    time: "2 minutes ago",
-    status: "success",
-  },
-  {
-    id: "2",
-    type: "reviewer",
-    message: "Reviewer Agent flagged ambiguity in Issue #309",
-    time: "15 minutes ago",
-    status: "warning",
-  },
-  {
-    id: "3",
-    type: "builder",
-    message: "Builder Agent completed processing Issue #401",
-    time: "32 minutes ago",
-    status: "success",
-  },
-  {
-    id: "4",
-    type: "system",
-    message: "New issue #403 imported from GitLab",
-    time: "1 hour ago",
-    status: "info",
-  },
-  {
-    id: "5",
-    type: "reviewer",
-    message: "Reviewer Agent approved requirements for Issue #398",
-    time: "2 hours ago",
-    status: "success",
-  },
-];
-
 export function ActivityFeed() {
+  const { user } = useAuth();
+  const [activities, setActivities] = useState<Activity[]>([]);
+
+  useEffect(() => {
+    if (!user) {
+      setActivities([]);
+      return;
+    }
+
+    const col = collection(db, "users", user.uid, "importedIssues");
+    const q = query(col, orderBy("importedAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const items: Activity[] = [];
+      snap.docs.forEach((d) => {
+        const data: any = d.data();
+        const id = d.id;
+        const num = data.number ?? id;
+
+        // import activity
+        if (data.importedAt) {
+          const t = data.importedAt.toDate ? data.importedAt.toDate().toLocaleString() : String(data.importedAt);
+          items.push({ id: `import-${id}`, type: "system", message: `Imported issue #${num}: ${data.title ?? "(no title)"}`, time: t, status: "info" });
+        }
+
+        // generated requirements activity
+        if (data.generatedAt || data.requirementsGenerated) {
+          const t = (data.generatedAt && data.generatedAt.toDate) ? data.generatedAt.toDate().toLocaleString() : (data.generatedAt ? String(data.generatedAt) : new Date().toLocaleString());
+          items.push({ id: `gen-${id}`, type: "builder", message: `Requirements generated for #${num}`, time: t, status: "success" });
+        }
+
+        // approval activity
+        if (data.requirementsApproved) {
+          const t = data.approvedAt && data.approvedAt.toDate ? data.approvedAt.toDate().toLocaleString() : new Date().toLocaleString();
+          items.push({ id: `app-${id}`, type: "reviewer", message: `Requirements approved for #${num}`, time: t, status: "success" });
+        }
+      });
+
+      // sort by time desc and limit to 10
+      items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      setActivities(items.slice(0, 10));
+    });
+
+    return () => unsub();
+  }, [user]);
+
   return (
     <div className="glass-card rounded-xl p-6 animate-slide-up">
       <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
       <div className="space-y-4">
         {activities.map((activity) => (
-          <div
-            key={activity.id}
-            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-          >
+          <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
             <div
               className={cn(
                 "p-2 rounded-lg shrink-0",
