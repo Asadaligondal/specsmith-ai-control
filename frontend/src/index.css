@@ -4,104 +4,106 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
+    /* GitHub Light Mode Colors */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 18%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 210 29% 97%;
+    --card-foreground: 220 13% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 13% 18%;
 
-    --primary: 238 84% 67%;
+    --primary: 212 92% 43%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 20% 95%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 210 29% 97%;
+    --secondary-foreground: 220 13% 18%;
 
-    --muted: 215 20% 94%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 210 29% 97%;
+    --muted-foreground: 215 14% 53%;
 
-    --accent: 215 20% 92%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 220 13% 18%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 356 72% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
+    --success: 137 55% 15%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
+    --warning: 41 100% 38%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 238 84% 67%;
+    --border: 214 18% 82%;
+    --input: 214 18% 82%;
+    --ring: 212 92% 43%;
 
-    --radius: 0.625rem;
+    --radius: 0.375rem;
 
-    --sidebar-background: 220 20% 97%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 238 84% 67%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 13% 18%;
+    --sidebar-primary: 212 92% 43%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 20% 92%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 238 84% 67%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 220 13% 18%;
+    --sidebar-border: 214 18% 82%;
+    --sidebar-ring: 212 92% 43%;
 
-    --chart-1: 238 84% 67%;
-    --chart-2: 142 71% 45%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --chart-1: 212 92% 43%;
+    --chart-2: 137 55% 15%;
+    --chart-3: 41 100% 38%;
+    --chart-4: 280 61% 50%;
+    --chart-5: 356 72% 47%;
 
-    --agent-builder: 238 84% 67%;
-    --agent-reviewer: 280 65% 60%;
+    --agent-builder: 212 92% 43%;
+    --agent-reviewer: 280 61% 50%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* GitHub Dark Mode Colors */
+    --background: 220 27% 6%;
+    --foreground: 213 27% 84%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 28% 9%;
+    --card-foreground: 213 27% 84%;
 
-    --popover: 222 47% 8%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 28% 9%;
+    --popover-foreground: 213 27% 84%;
 
-    --primary: 238 84% 67%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 213 93% 68%;
+    --primary-foreground: 220 27% 6%;
 
-    --secondary: 217 33% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 16% 13%;
+    --secondary-foreground: 213 27% 84%;
 
-    --muted: 217 33% 15%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 215 16% 13%;
+    --muted-foreground: 217 12% 64%;
 
-    --accent: 217 33% 18%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 216 20% 16%;
+    --accent-foreground: 213 27% 84%;
 
-    --destructive: 0 62% 50%;
+    --destructive: 358 75% 63%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
+    --success: 137 61% 52%;
+    --success-foreground: 220 27% 6%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 41 89% 60%;
+    --warning-foreground: 220 27% 6%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 238 84% 67%;
+    --border: 215 16% 19%;
+    --input: 215 16% 19%;
+    --ring: 213 93% 68%;
 
-    --sidebar-background: 222 47% 7%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 238 84% 67%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 15%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 18%;
-    --sidebar-ring: 238 84% 67%;
+    --sidebar-background: 220 27% 6%;
+    --sidebar-foreground: 213 27% 84%;
+    --sidebar-primary: 213 93% 68%;
+    --sidebar-primary-foreground: 220 27% 6%;
+    --sidebar-accent: 216 20% 16%;
+    --sidebar-accent-foreground: 213 27% 84%;
+    --sidebar-border: 215 16% 19%;
+    --sidebar-ring: 213 93% 68%;
   }
 }
 
