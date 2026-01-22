@@ -37,18 +37,18 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen border-r border-sidebar-border bg-sidebar transition-all duration-300",
+        "flex flex-col h-screen border-r border-border bg-background transition-all duration-300",
         collapsed ? "w-16" : "w-64"
       )}
     >
       {/* Logo */}
-      <div className="flex items-center h-16 px-4 border-b border-sidebar-border">
+      <div className="flex items-center h-16 px-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg gradient-primary">
+          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary shrink-0">
             <Sparkles className="w-4 h-4 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <span className="font-semibold text-lg text-sidebar-foreground">
+            <span className="font-semibold text-base text-foreground">
               SpecSmith AI
             </span>
           )}
@@ -64,10 +64,10 @@ export function AppSidebar() {
               key={item.title}
               to={item.url}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                "flex items-center gap-3 px-3 py-2 rounded-md transition-colors duration-150 font-medium text-sm",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary font-medium"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
               <item.icon className="w-5 h-5 shrink-0" />
@@ -91,14 +91,14 @@ export function AppSidebar() {
       </nav>
 
       {/* Logout & Collapse */}
-      <div className="p-3 border-t border-sidebar-border space-y-1">
+      <div className="p-3 border-t border-border space-y-1">
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <button
               onClick={handleLogout}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full transition-all duration-200",
-                "text-sidebar-foreground/70 hover:bg-destructive/10 hover:text-destructive"
+                "flex items-center gap-3 px-3 py-2 rounded-md w-full transition-colors duration-150 font-medium text-sm",
+                "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
               )}
             >
               <LogOut className="w-5 h-5 shrink-0" />
@@ -117,7 +117,7 @@ export function AppSidebar() {
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            "w-full justify-center text-sidebar-foreground/50 hover:text-sidebar-foreground",
+            "w-full justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50",
             collapsed && "px-0"
           )}
         >
