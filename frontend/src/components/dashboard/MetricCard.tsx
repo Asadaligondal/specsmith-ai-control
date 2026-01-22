@@ -19,15 +19,15 @@ export function MetricCard({
   iconColor = "bg-primary/10 text-primary",
 }: MetricCardProps) {
   return (
-    <div className="glass-card rounded-xl p-6 animate-fade-in">
+    <div className="github-card animate-fade-in">
       <div className="flex items-start justify-between">
-        <div className="space-y-3">
+        <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold tracking-tight">{value}</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{value}</p>
           {change && (
             <p
               className={cn(
-                "text-sm font-medium",
+                "text-xs font-medium",
                 changeType === "positive" && "text-success",
                 changeType === "negative" && "text-destructive",
                 changeType === "neutral" && "text-muted-foreground"
@@ -37,8 +37,8 @@ export function MetricCard({
             </p>
           )}
         </div>
-        <div className={cn("p-3 rounded-xl", iconColor)}>
-          <Icon className="w-6 h-6" />
+        <div className={cn("p-2.5 rounded-md", iconColor)}>
+          <Icon className="w-5 h-5" />
         </div>
       </div>
     </div>
