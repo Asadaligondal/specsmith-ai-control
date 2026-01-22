@@ -119,20 +119,33 @@
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+    @apply bg-card border border-border shadow-sm;
   }
 
   .gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(238 84% 55%) 100%);
+    background: linear-gradient(135deg, hsl(212 92% 43%) 0%, hsl(213 93% 68%) 100%);
   }
 
   .gradient-success {
-    background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(142 71% 35%) 100%);
+    background: linear-gradient(135deg, hsl(137 55% 15%) 0%, hsl(137 61% 52%) 100%);
+  }
+
+  .gradient-hero {
+    background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(210 40% 98%) 50%, hsl(var(--background)) 100%);
+  }
+
+  .gradient-hero-dark {
+    background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(216 20% 10%) 50%, hsl(var(--background)) 100%);
   }
 
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(280 65% 60%) 100%);
+    background-image: linear-gradient(135deg, hsl(212 92% 43%) 0%, hsl(213 93% 68%) 100%);
+  }
+
+  .text-gradient-success {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(137 55% 15%) 0%, hsl(137 61% 52%) 100%);
   }
 
   .animate-fade-in {
@@ -145,6 +158,22 @@
 
   .animate-pulse-soft {
     animation: pulseSoft 2s ease-in-out infinite;
+  }
+
+  .github-border {
+    @apply border border-border rounded-md;
+  }
+
+  .github-card {
+    @apply bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-all duration-200;
+  }
+
+  .github-button-primary {
+    @apply bg-[#2da44e] hover:bg-[#2c974b] text-white font-medium px-4 py-2 rounded-md transition-colors;
+  }
+
+  .github-button-secondary {
+    @apply bg-muted hover:bg-accent text-foreground font-medium px-4 py-2 rounded-md border border-border transition-colors;
   }
 }
 
