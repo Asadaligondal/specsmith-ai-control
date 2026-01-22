@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User, Sparkles } from "lucide-react";
+import { Mail, Lock, User, Sparkles, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,10 +36,10 @@ export default function Signup() {
     }
   };
 
-  const handleGitLabSignup = () => {
+  const handleGitHubSignup = () => {
     toast({
-      title: "GitLab OAuth",
-      description: "GitLab authentication coming soon!",
+      title: "GitHub OAuth",
+      description: "GitHub authentication coming soon!",
     });
   };
 
@@ -49,23 +49,25 @@ export default function Signup() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl gradient-primary">
+            <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-semibold text-xl">SpecSmith AI</span>
           </Link>
-          <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="text-muted-foreground mt-2">
-            Start automating your specs today
+          <h1 className="text-2xl font-bold mb-2">Create your account</h1>
+          <p className="text-muted-foreground">
+            Start automating your specifications today
           </p>
         </div>
 
         {/* Card */}
-        <div className="glass-card rounded-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="github-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Full Name */}
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName" className="text-sm font-medium">
+                Full name
+              </Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -74,7 +76,7 @@ export default function Signup() {
                   placeholder="John Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                   required
                 />
               </div>
@@ -82,16 +84,18 @@ export default function Signup() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email address
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                   required
                 />
               </div>
@@ -99,32 +103,34 @@ export default function Signup() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password
+              </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                   required
                   minLength={8}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters
+                Must be at least 8 characters long
               </p>
             </div>
 
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full gradient-primary text-primary-foreground"
+              className="w-full bg-[#2da44e] hover:bg-[#2c974b] text-white font-medium h-10"
               disabled={isLoading}
             >
-              {isLoading ? "Creating account..." : "Sign Up"}
+              {isLoading ? "Creating account..." : "Create Account"}
             </Button>
           </form>
 
@@ -133,27 +139,29 @@ export default function Signup() {
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">OR</span>
             </div>
           </div>
 
-          {/* GitLab Button */}
+          {/* GitHub Button */}
           <Button
             type="button"
             variant="outline"
-            className="w-full"
-            onClick={handleGitLabSignup}
+            className="w-full h-10 font-medium"
+            onClick={handleGitHubSignup}
           >
-            <svg
-              className="w-5 h-5 mr-2"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
-            </svg>
-            Sign up with GitLab
+            <Github className="w-5 h-5 mr-2" />
+            Continue with GitHub
           </Button>
+
+          {/* Terms */}
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            By creating an account, you agree to our{" "}
+            <a href="#" className="text-primary hover:underline">Terms</a>
+            {" "}and{" "}
+            <a href="#" className="text-primary hover:underline">Privacy Policy</a>
+          </p>
         </div>
 
         {/* Sign in link */}
