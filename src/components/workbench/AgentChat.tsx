@@ -55,9 +55,9 @@ export function AgentChat() {
   }, [issueId, user]);
 
   const runAgents = async () => {
-    const key = sessionStorage.getItem("OPENAI_API_KEY");
+    const key = import.meta.env.VITE_OPENAI_API_KEY || "";
     if (!key) {
-      toast({ title: "Missing API key", description: "Set your OpenAI key in the field above." });
+      toast({ title: "Missing API key", description: "No OpenAI key is configured on the server. Set VITE_OPENAI_API_KEY in environment variables." });
       return;
     }
     if (!user || !issueId) {
@@ -230,34 +230,7 @@ export function AgentChat() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <input
-              aria-label="OpenAI API Key"
-              placeholder="OpenAI API key (optional)"
-              type="password"
-              value={sessionStorage.getItem("OPENAI_API_KEY") ?? ""}
-              onChange={(e) => {
-                sessionStorage.setItem("OPENAI_API_KEY", e.target.value);
-              }}
-              className="input input-sm px-2 py-1 rounded-md border bg-card text-sm"
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                // noop: storing in sessionStorage is sufficient for now
-                const val = sessionStorage.getItem("OPENAI_API_KEY");
-                if (val) {
-                  // eslint-disable-next-line no-console
-                  console.log("OpenAI key set in sessionStorage");
-                  alert("OpenAI key set for this session.");
-                } else {
-                  alert("No key provided.");
-                }
-              }}
-              className="h-7 text-xs"
-            >
-              Save Key
-            </Button>
+            <div className="text-sm text-muted-foreground">Using server OpenAI key from environment.</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -278,7 +251,7 @@ export function AgentChat() {
 
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-sm text-muted-foreground">No agent activity. Click Run to start processing (requires API keys).</div>
+          <div className="text-sm text-muted-foreground">No agent activity. Click Run to start processing (uses server OpenAI key).</div>
         ) : (
           messages.map((message) => (
             <div

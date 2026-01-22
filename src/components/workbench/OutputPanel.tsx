@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 export function OutputPanel() {
@@ -16,50 +16,49 @@ export function OutputPanel() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function loadOutput() {
-      setOutput(null);
-      if (!user || !issueId) return;
-      const num = issueId.replace("#", "");
-      setLoading(true);
+    if (!user || !issueId) return;
+    const num = issueId.replace("#", "");
+    setOutput(null);
+    setLoading(true);
+    const ref = doc(db, "users", user.uid, "importedIssues", String(num));
+    const unsub = onSnapshot(ref, (snap) => {
       try {
-        const ref = doc(db, "users", user.uid, "importedIssues", String(num));
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data: any = snap.data();
-          // if we have generated output stored, normalize to a string for display
-          const gen = data.generatedOutput ?? null;
-          if (!gen) {
-            setOutput(null);
-          } else if (typeof gen === "string") {
-            setOutput(gen);
-          } else if (typeof gen === "object") {
-            // prefer reviewer output, then builder, then compose both, else stringify
-            const reviewer = gen.reviewer ?? gen.reviewerOutput ?? gen.spec ?? null;
-            const builder = gen.builder ?? gen.builderOutput ?? null;
-            if (reviewer && builder) {
-              setOutput(`Builder:\n${builder}\n\nReviewer:\n${reviewer}`);
-            } else if (reviewer) {
-              setOutput(String(reviewer));
-            } else if (builder) {
-              setOutput(String(builder));
-            } else {
-              try {
-                setOutput(JSON.stringify(gen, null, 2));
-              } catch (e) {
-                setOutput(String(gen));
-              }
-            }
-          } else {
-            setOutput(String(gen));
-          }
+        if (!snap.exists()) {
+          setOutput(null);
+          setLoading(false);
+          return;
         }
-      } catch (e) {
-        // ignore
+        const data: any = snap.data();
+        const gen = data.generatedOutput ?? null;
+        if (!gen) {
+          setOutput(null);
+        } else if (typeof gen === "string") {
+          setOutput(gen);
+        } else if (typeof gen === "object") {
+          const reviewer = gen.reviewer ?? gen.reviewerOutput ?? gen.spec ?? null;
+          const builder = gen.builder ?? gen.builderOutput ?? null;
+          if (reviewer && builder) {
+            setOutput(`Builder:\n${builder}\n\nReviewer:\n${reviewer}`);
+          } else if (reviewer) {
+            setOutput(String(reviewer));
+          } else if (builder) {
+            setOutput(String(builder));
+          } else {
+            try {
+              setOutput(JSON.stringify(gen, null, 2));
+            } catch (e) {
+              setOutput(String(gen));
+            }
+          }
+        } else {
+          setOutput(String(gen));
+        }
       } finally {
         setLoading(false);
       }
-    }
-    loadOutput();
+    });
+
+    return () => unsub();
   }, [issueId, user]);
 
   const handleCopy = () => {
