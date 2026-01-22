@@ -202,14 +202,14 @@ export function AgentChat() {
     }
   };
 
-  const startRun = async () => {
-    const allow = import.meta.env.VITE_ENABLE_AGENT_RUNS === "true";
-    if (!allow) {
-      alert("Agent run is disabled in this environment. Provide permission to enable runs.");
-      return;
-    }
-    await runAgents();
-  };
+  // const startRun = async () => {
+  //   const allow = import.meta.env.VITE_ENABLE_AGENT_RUNS === "true";
+  //   if (!allow) {
+  //     alert("Agent run is disabled in this environment. Provide permission to enable runs.");
+  //     return;
+  //   }
+  //   await runAgents();
+  // };
   const handleRestart = () => {
     // Clear messages and show idle state — actual agent runs require API keys
     setMessages([]);
