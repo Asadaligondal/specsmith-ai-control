@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, Sparkles } from "lucide-react";
+import { Mail, Lock, Sparkles, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,10 +35,10 @@ export default function Login() {
     }
   };
 
-  const handleGitLabLogin = () => {
+  const handleGitHubLogin = () => {
     toast({
-      title: "GitLab OAuth",
-      description: "GitLab authentication coming soon!",
+      title: "GitHub OAuth",
+      description: "GitHub authentication coming soon!",
     });
   };
 
@@ -48,32 +48,34 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-3 mb-6">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl gradient-primary">
+            <div className="flex items-center justify-center w-10 h-10 rounded-md bg-primary">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-semibold text-xl">SpecSmith AI</span>
           </Link>
-          <h1 className="text-2xl font-bold">Welcome back</h1>
-          <p className="text-muted-foreground mt-2">
-            Sign in to your account to continue
+          <h1 className="text-2xl font-bold mb-2">Sign in to your account</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Please enter your details.
           </p>
         </div>
 
         {/* Card */}
-        <div className="glass-card rounded-xl p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="github-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email address
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                   required
                 />
               </div>
@@ -81,16 +83,23 @@ export default function Login() {
 
             {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <a href="#" className="text-sm text-primary hover:underline">
+                  Forgot password?
+                </a>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-10"
                   required
                 />
               </div>
@@ -99,7 +108,7 @@ export default function Login() {
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full gradient-primary text-primary-foreground"
+              className="w-full bg-[#2da44e] hover:bg-[#2c974b] text-white font-medium h-10"
               disabled={isLoading}
             >
               {isLoading ? "Signing in..." : "Sign In"}
@@ -111,26 +120,20 @@ export default function Login() {
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-card px-2 text-muted-foreground">OR</span>
             </div>
           </div>
 
-          {/* GitLab Button */}
+          {/* GitHub Button */}
           <Button
             type="button"
             variant="outline"
-            className="w-full"
-            onClick={handleGitLabLogin}
+            className="w-full h-10 font-medium"
+            onClick={handleGitHubLogin}
           >
-            <svg
-              className="w-5 h-5 mr-2"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z" />
-            </svg>
-            Sign in with GitLab
+            <Github className="w-5 h-5 mr-2" />
+            Continue with GitHub
           </Button>
         </div>
 
@@ -138,7 +141,7 @@ export default function Login() {
         <p className="text-center text-sm text-muted-foreground mt-6">
           Don't have an account?{" "}
           <Link to="/signup" className="text-primary hover:underline font-medium">
-            Sign up
+            Create an account
           </Link>
         </p>
       </div>
