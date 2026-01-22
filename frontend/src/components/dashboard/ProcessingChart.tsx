@@ -35,12 +35,9 @@ export function ProcessingChart() {
     }
 
     const labels = getLastNDaysLabels(7);
-    const counts = labels.map(() => ({ processed: 0, generated: 0 }));
-
     const col = collection(db, "users", user.uid, "importedIssues");
     const q = query(col);
     const unsub = onSnapshot(q, (snap) => {
-      // reset
       const today = new Date();
       const baseDates = labels.map((l, idx) => {
         const d = new Date();
@@ -53,7 +50,6 @@ export function ProcessingChart() {
 
       snap.docs.forEach((d) => {
         const data: any = d.data();
-        // processed = importedAt
         if (data.importedAt && data.importedAt.toDate) {
           const imp = data.importedAt.toDate();
           baseDates.forEach((bd, idx) => {
@@ -64,7 +60,6 @@ export function ProcessingChart() {
             }
           });
         }
-        // generated = generatedAt or requirementsGenerated
         if ((data.generatedAt && data.generatedAt.toDate) || data.requirementsGenerated) {
           const genDate = data.generatedAt && data.generatedAt.toDate ? data.generatedAt.toDate() : (data.generatedAt ? new Date(data.generatedAt) : null);
           if (genDate) {
@@ -89,17 +84,17 @@ export function ProcessingChart() {
   const labels = getLastNDaysLabels(7);
 
   return (
-    <div className="glass-card rounded-xl p-6 animate-slide-up">
+    <div className="github-card animate-slide-up">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold">Issues Processed vs. Time</h3>
-        <div className="flex items-center gap-4 text-sm">
+        <h3 className="text-base font-semibold text-foreground">Issues Processed Over Time</h3>
+        <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-primary" />
-            <span className="text-muted-foreground">Processed</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-primary" />
+            <span className="text-muted-foreground font-medium">Processed</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-success" />
-            <span className="text-muted-foreground">Requirements</span>
+            <div className="w-2.5 h-2.5 rounded-full bg-success" />
+            <span className="text-muted-foreground font-medium">Requirements</span>
           </div>
         </div>
       </div>
@@ -108,12 +103,12 @@ export function ProcessingChart() {
           <AreaChart data={chartData.length ? chartData : labels.map((l) => ({ date: l, processed: 0, generated: 0 }))}>
             <defs>
               <linearGradient id="colorProcessed" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(238, 84%, 67%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(238, 84%, 67%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(212, 92%, 43%)" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(212, 92%, 43%)" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorGenerated" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(137, 55%, 15%)" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(137, 55%, 15%)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -123,12 +118,12 @@ export function ProcessingChart() {
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
-                boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                borderRadius: "6px",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
               }}
             />
-            <Area type="monotone" dataKey="processed" stroke="hsl(238, 84%, 67%)" strokeWidth={2} fillOpacity={1} fill="url(#colorProcessed)" />
-            <Area type="monotone" dataKey="generated" stroke="hsl(142, 71%, 45%)" strokeWidth={2} fillOpacity={1} fill="url(#colorGenerated)" />
+            <Area type="monotone" dataKey="processed" stroke="hsl(212, 92%, 43%)" strokeWidth={2} fillOpacity={1} fill="url(#colorProcessed)" />
+            <Area type="monotone" dataKey="generated" stroke="hsl(137, 55%, 15%)" strokeWidth={2} fillOpacity={1} fill="url(#colorGenerated)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

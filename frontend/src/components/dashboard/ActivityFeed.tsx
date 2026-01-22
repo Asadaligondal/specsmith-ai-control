@@ -9,7 +9,7 @@ interface Activity {
   id: string;
   type: "builder" | "reviewer" | "system";
   message: string;
-  time: string; // human readable
+  time: string;
   status?: "success" | "warning" | "info";
 }
 
@@ -32,26 +32,22 @@ export function ActivityFeed() {
         const id = d.id;
         const num = data.number ?? id;
 
-        // import activity
         if (data.importedAt) {
           const t = data.importedAt.toDate ? data.importedAt.toDate().toLocaleString() : String(data.importedAt);
           items.push({ id: `import-${id}`, type: "system", message: `Imported issue #${num}: ${data.title ?? "(no title)"}`, time: t, status: "info" });
         }
 
-        // generated requirements activity
         if (data.generatedAt || data.requirementsGenerated) {
           const t = (data.generatedAt && data.generatedAt.toDate) ? data.generatedAt.toDate().toLocaleString() : (data.generatedAt ? String(data.generatedAt) : new Date().toLocaleString());
           items.push({ id: `gen-${id}`, type: "builder", message: `Requirements generated for #${num}`, time: t, status: "success" });
         }
 
-        // approval activity
         if (data.requirementsApproved) {
           const t = data.approvedAt && data.approvedAt.toDate ? data.approvedAt.toDate().toLocaleString() : new Date().toLocaleString();
           items.push({ id: `app-${id}`, type: "reviewer", message: `Requirements approved for #${num}`, time: t, status: "success" });
         }
       });
 
-      // sort by time desc and limit to 10
       items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
       setActivities(items.slice(0, 10));
     });
@@ -60,14 +56,17 @@ export function ActivityFeed() {
   }, [user]);
 
   return (
-    <div className="glass-card rounded-xl p-6 animate-slide-up">
-      <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-      <div className="space-y-4">
+    <div className="github-card animate-slide-up">
+      <h3 className="text-base font-semibold mb-4 text-foreground">Recent Activity</h3>
+      <div className="space-y-3">
+        {activities.length === 0 && (
+          <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+        )}
         {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+          <div key={activity.id} className="flex items-start gap-3 p-3 rounded-md hover:bg-muted/50 transition-colors border border-transparent hover:border-border">
             <div
               className={cn(
-                "p-2 rounded-lg shrink-0",
+                "p-2 rounded-md shrink-0",
                 activity.type === "builder" && "bg-agent-builder/10 text-agent-builder",
                 activity.type === "reviewer" && "bg-agent-reviewer/10 text-agent-reviewer",
                 activity.type === "system" && "bg-muted text-muted-foreground"
@@ -80,14 +79,14 @@ export function ActivityFeed() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-foreground">{activity.message}</p>
+              <p className="text-sm text-foreground leading-snug">{activity.message}</p>
               <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
             </div>
             {activity.status === "success" && (
-              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
             )}
             {activity.status === "warning" && (
-              <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
             )}
           </div>
         ))}
