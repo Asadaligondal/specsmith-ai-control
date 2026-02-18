@@ -65,19 +65,38 @@ export default function Settings() {
     return key.slice(0, 4) + "..." + key.slice(-4);
   };
 
+  const parseRepoUrl = (url: string): { owner: string; repo: string } | null => {
+    const u = url.trim().replace(/\/+$/, "").replace(/\.git$/i, "");
+    if (!u) return null;
+    // https://github.com/owner/repo or https://github.com/owner/repo/
+    if (u.includes("github.com/")) {
+      const parts = u.split("github.com/")[1]?.split("/").filter(Boolean) ?? [];
+      if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+    }
+    // git@github.com:owner/repo
+    if (u.includes("github.com:")) {
+      const after = u.split("github.com:")[1] ?? "";
+      const parts = after.split("/").filter(Boolean);
+      if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+    }
+    // owner/repo shorthand
+    if (u.includes("/") && !u.includes(":")) {
+      const parts = u.split("/").filter(Boolean);
+      if (parts.length >= 2) return { owner: parts[0], repo: parts[1] };
+    }
+    return null;
+  };
+
   const handleVerifyConnection = async () => {
     setIsVerifying(true);
     try {
       if (!user) throw new Error("Sign in required");
       if (provider === "github") {
         if (!storedPat || !repoUrl) throw new Error("Provide PAT and repo URL");
-        const octokit = new Octokit({ auth: storedPat });
-        // try to get repo
-        const parts = repoUrl.replace(/\.git$/i, "").split("/").slice(-2);
-        const owner = parts[0];
-        const repo = parts[1];
-        setIsVerifying(true);
-        await octokit.rest.repos.get({ owner, repo });
+        const parsed = parseRepoUrl(repoUrl);
+        if (!parsed) throw new Error("Invalid repo URL. Use: https://github.com/owner/repo or owner/repo");
+        const octokit = new Octokit({ auth: storedPat.trim() });
+        await octokit.rest.repos.get({ owner: parsed.owner, repo: parsed.repo });
         setIsConnected(true);
         toast({ title: "Connection Verified", description: "Connected to GitHub repository." });
       } else {
@@ -87,7 +106,11 @@ export default function Settings() {
         toast({ title: "Connection Verified", description: "Connected to GitLab repository." });
       }
     } catch (err: any) {
-      toast({ title: "Connection failed", description: err?.message ?? String(err) });
+      const msg = err?.message ?? String(err);
+      const hint = msg.includes("404") || msg.toLowerCase().includes("not found")
+        ? " Check: (1) Repo exists and you have access, (2) PAT has 'repo' scope for private repos."
+        : "";
+      toast({ title: "Connection failed", description: msg + hint });
       setIsConnected(false);
     } finally {
       setIsVerifying(false);

@@ -113,19 +113,19 @@ export default function IssueBoard() {
   };
 
   return (
-    <div className=\"space-y-6 max-w-[1400px]\">
+    <div className="space-y-6 max-w-[1400px]">
       {/* Header */}
-      <div className=\"flex items-center justify-between\">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className=\"text-2xl font-bold text-foreground\">Issue Board</h1>
-          <p className=\"text-muted-foreground mt-1\">
+          <h1 className="text-2xl font-bold text-foreground">Issue Board</h1>
+          <p className="text-muted-foreground mt-1">
             Manage and process issues with AI agents
           </p>
         </div>
-        <div className=\"flex items-center gap-3\">
-          <Button className=\"bg-[#2da44e] hover:bg-[#2c974b] text-white font-medium\" asChild>
-            <a href=\"/settings\">
-              <ExternalLink className=\"w-4 h-4 mr-2\" />
+        <div className="flex items-center gap-3">
+          <Button className="bg-[#2da44e] hover:bg-[#2c974b] text-white font-medium" asChild>
+            <a href="/settings">
+              <ExternalLink className="w-4 h-4 mr-2" />
               Connect Repository
             </a>
           </Button>
@@ -136,54 +136,54 @@ export default function IssueBoard() {
       <GitHubManager />
 
       {/* Filters */}
-      <div className=\"flex items-center gap-3\">
-        <div className=\"relative flex-1 max-w-md\">
-          <Search className=\"absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground\" />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder=\"Search issues...\"
+            placeholder="Search issues..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className=\"pl-10 h-9\"
+            className="pl-10 h-9"
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className=\"w-[180px] h-9\">
-            <Filter className=\"w-4 h-4 mr-2\" />
-            <SelectValue placeholder=\"Filter by status\" />
+          <SelectTrigger className="w-[180px] h-9">
+            <Filter className="w-4 h-4 mr-2" />
+            <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=\"all\">All Statuses</SelectItem>
-            <SelectItem value=\"new\">New</SelectItem>
-            <SelectItem value=\"processing\">Processing</SelectItem>
-            <SelectItem value=\"reviewing\">Reviewing</SelectItem>
-            <SelectItem value=\"completed\">Completed</SelectItem>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="new">New</SelectItem>
+            <SelectItem value="processing">Processing</SelectItem>
+            <SelectItem value="reviewing">Reviewing</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Table */}
-      <div className=\"github-card p-0 overflow-hidden\">
+      <div className="github-card p-0 overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className=\"hover:bg-transparent border-b border-border\">
-              <TableHead className=\"w-24 font-semibold\">
-                <Button variant=\"ghost\" size=\"sm\" className=\"-ml-3 h-8 font-semibold\">
+            <TableRow className="hover:bg-transparent border-b border-border">
+              <TableHead className="w-24 font-semibold">
+                <Button variant="ghost" size="sm" className="-ml-3 h-8 font-semibold">
                   Issue ID
-                  <ArrowUpDown className=\"ml-2 h-3 w-3\" />
+                  <ArrowUpDown className="ml-2 h-3 w-3" />
                 </Button>
               </TableHead>
-              <TableHead className=\"font-semibold\">Title</TableHead>
-              <TableHead className=\"w-32 font-semibold\">Status</TableHead>
-              <TableHead className=\"w-28 font-semibold\">Priority</TableHead>
-              <TableHead className=\"w-32 font-semibold\">Author</TableHead>
-              <TableHead className=\"w-32 font-semibold\">Created</TableHead>
-              <TableHead className=\"w-36 text-right font-semibold\">Actions</TableHead>
+              <TableHead className="font-semibold">Title</TableHead>
+              <TableHead className="w-32 font-semibold">Status</TableHead>
+              <TableHead className="w-28 font-semibold">Priority</TableHead>
+              <TableHead className="w-32 font-semibold">Author</TableHead>
+              <TableHead className="w-32 font-semibold">Created</TableHead>
+              <TableHead className="w-36 text-right font-semibold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredIssues.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className=\"text-center py-8 text-muted-foreground\">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No issues found. Import issues from your repository to get started.
                 </TableCell>
               </TableRow>
@@ -191,47 +191,47 @@ export default function IssueBoard() {
             {filteredIssues.map((issue) => (
               <TableRow
                 key={issue.id}
-                className=\"cursor-pointer hover:bg-muted/50 border-b border-border\"
+                className="cursor-pointer hover:bg-muted/50 border-b border-border"
               >
-                <TableCell className=\"font-mono text-sm font-medium text-foreground\">
+                <TableCell className="font-mono text-sm font-medium text-foreground">
                   {issue.id}
                 </TableCell>
-                <TableCell className=\"font-medium max-w-md truncate text-foreground\">
+                <TableCell className="font-medium max-w-md truncate text-foreground">
                   {issue.title}
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant=\"outline\"
-                    className={cn(\"font-medium text-xs\", statusConfig[issue.status].className)}
+                    variant="outline"
+                    className={cn("font-medium text-xs", statusConfig[issue.status].className)}
                   >
                     {statusConfig[issue.status].label}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge
-                    variant=\"outline\"
-                    className={cn(\"font-medium text-xs\", priorityConfig[issue.priority].className)}
+                    variant="outline"
+                    className={cn("font-medium text-xs", priorityConfig[issue.priority].className)}
                   >
                     {priorityConfig[issue.priority].label}
                   </Badge>
                 </TableCell>
-                <TableCell className=\"text-muted-foreground text-sm\">
+                <TableCell className="text-muted-foreground text-sm">
                   {issue.author}
                 </TableCell>
-                <TableCell className=\"text-muted-foreground text-xs\">
+                <TableCell className="text-muted-foreground text-xs">
                   {issue.createdAt}
                 </TableCell>
-                <TableCell className=\"text-right\">
+                <TableCell className="text-right">
                   {(() => {
-                    const isCompleted = issue.status === \"completed\";
-                    const label = isCompleted ? \"View\" : \"Launch Agents\";
+                    const isCompleted = issue.status === "completed";
+                    const label = isCompleted ? "View" : "Launch Agents";
                     return (
                       <Button
-                        size=\"sm\"
+                        size="sm"
                         onClick={() => handleLaunchAgents(issue.id)}
-                        className=\"bg-primary hover:bg-primary/90 text-primary-foreground font-medium h-8 px-3 text-xs\"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium h-8 px-3 text-xs"
                       >
-                        <Play className=\"w-3 h-3 mr-1.5\" />
+                        <Play className="w-3 h-3 mr-1.5" />
                         {label}
                       </Button>
                     );
